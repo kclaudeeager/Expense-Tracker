@@ -52,10 +52,10 @@ class UtilClass:
 
     def write_data(self, data):
         try:
-            with open(self.file_path, 'w') as file:
+            with open(self.file_path, 'a') as file:
                 file.write(data)
-        except IOError:
-            raise FileWriteError("Error writing data to the file.")
+        except IOError as e:
+            raise FileWriteError(f"Error writing expenses to the file: {str(e)}")
 
     def validate_amount(self, amount) -> float:
         try:
@@ -74,6 +74,7 @@ class UtilClass:
             raise ValidateCategory(f"Invalid category. Category should have at least  {min_chars} characters.")
 
 
+    
 class ExpenseTracker:
     def __init__(self, file_path):
         self.file_path = file_path
@@ -81,20 +82,22 @@ class ExpenseTracker:
         
     def add_expense(self,category: str, amount: float):
          global expenses
+         expenses = []
          try:
             self.util.validate_category(category)
             validated_amount = self.util.validate_amount(amount)
             expenses.append((category, validated_amount))
          except (ValidateCategory, BadNumberException) as e:
             raise ValueError(str(e))
+        
     def dump_expenses(self):
-      global expenses
-      data = '\n'.join([f"{category},{amount}" for category, amount in expenses])
-      self.util.write_data(data)
+        global expenses
+        data = '\n'.join([f"{category},{amount}" for category, amount in expenses])
+        self.util.write_data(data+'\n')
+
     def read_expenses(self):
         global expenses
-        saved_expenses = []
-
+        expenses = []
         data = self.util.read_data()
         for line in data.split('\n'):
             line = line.strip()
@@ -102,8 +105,8 @@ class ExpenseTracker:
                 category, amount = line.split(',')
                 amount = float(amount)
                 formatted_amount = "{:.2f}".format(amount)
-                saved_expenses.append((category, formatted_amount))
-        expenses += saved_expenses
+                expenses.append((category, formatted_amount))
+       
   
     def get_expenses_by_category(self,category):
       global expenses
@@ -112,7 +115,7 @@ class ExpenseTracker:
         expense_category, _ = expense
         if expense_category.casefold() == category.casefold():
             matching_expenses.append(expense)
-
+      expenses = []
       return matching_expenses
     def calculate_total_expenses(self): 
       global expenses
@@ -122,6 +125,7 @@ class ExpenseTracker:
          total_amount += float(amount)
 
       return total_amount
+  
     def get_menu_action(self) -> int:
            while True:
                   print('Menu:')
@@ -159,6 +163,7 @@ if __name__ == "__main__":
                      amount = input("Enter the amount: ")
                      amount = tracker.util.validate_amount(amount)
                      tracker.add_expense(category, amount)
+                     tracker.dump_expenses()
                      print("Expense added successfully.")
                   except (ValueError, BadNumberException) as e:
                      print(f"Invalid input: {str(e)}")
@@ -169,19 +174,19 @@ if __name__ == "__main__":
                   category = input("Enter the category: ")
                   choosenExpenses = tracker.get_expenses_by_category(category)
                   if not choosenExpenses:
-                     print("No expenses found for the given category.")
+                     print(f"No expenses found for the given category {category}")
                   else:
                      print('|Category  |Amount    |')
                      print('***********************')
                      for expense in choosenExpenses:
                         print(tracker.print_expense(expense))
+                    
            elif command == 3:
                   total_expenses = tracker.calculate_total_expenses()
                   print(f"Total expenses: ${total_expenses:.2f}")
 
            elif command == 4:
                print("Exiting the Expense Tracker Application...")
-               tracker.dump_expenses()
                break
 
            else:
